@@ -1,17 +1,16 @@
 import bpy
 from .generic_constrain import OP_generic_constrain_operator
 from .utilities import Utilities
-import json
 
 
-Get_Custom_Operators = lambda : list(OP_generic_constrain_operator.__subclasses__())
+get_custom_operators = lambda : list(OP_generic_constrain_operator.__subclasses__())
 
 
 #----------------------------- UI Panel
 
-def Add_To_Layout(target,newOperator, column = False, layout=None):
+def add_to_layout(target,new_operator, column = False, layout=None):
     new_element = target.row() if column == False else layout.column().row()
-    new_element.operator(newOperator.bl_idname)
+    new_element.operator(new_operator.bl_idname)
     return new_element
     
 
@@ -24,65 +23,52 @@ class OBJECT_PT_JsonConstrainPanel(bpy.types.Panel):
     
     def draw(self, context):
         layout = self.layout
-        for subclass in Get_Custom_Operators():
-            Add_To_Layout(layout, subclass, True, layout)
-        refreshButton = Add_To_Layout(layout, OP_Refresh, True, layout)
-        Add_To_Layout(layout, OP_SaveToCharacter, True, refreshButton)
+        for subclass in get_custom_operators():
+            add_to_layout(layout, subclass, True, layout)
+        add_to_layout(layout, OP_Refresh, True, layout)
         return
     
 
 class OP_Refresh(bpy.types.Operator):
     bl_idname = "object.refresh"
-    bl_label = "Refresh"
+    bl_label = "Refresh panel"
     bl_description = "Refresh panel"
 
     def execute(self, context):
         bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
-        OP_Refresh.Unregister_Operators()
+        OP_Refresh.unregister_operators()
         bpy.utils.register_class(OBJECT_PT_JsonConstrainPanel)
-        Initialize_Classes()
+        initialize_classes()
         return {'FINISHED'}
     
     @staticmethod
-    def Unregister_Operators():
-        for subclass in Get_Custom_Operators():
+    def unregister_operators():
+        for subclass in get_custom_operators():
             try:
                 bpy.utils.unregister_class(subclass)
                 print(f"Unregistered class: {subclass.__name__}")
             except RuntimeError as e:
                 print(f"Could not unregister class {subclass.__name__}: {e}")
-               
-                
-class OP_SaveToCharacter(bpy.types.Operator):
-    bl_idname = "object.savetocharacter"
-    bl_label = "Save to character"
-    bl_description = "Saves the current json to a custom property on the armature"
-    
-    def execute(self, context):
-        selectedObject = Utilities.Get_Selected_Object()
-        selectedObject["Json rigging"] = json.dumps(Utilities.Get_Json_Data(), indent=2)
-        selectedObject.property_overridable_library_set(f'["Json rigging"]', True)
-        return{'FINISHED'}
 
 
 #----------------------------- UI Panel
 
-def Initialize_Classes():
+def initialize_classes():
     jsonContent = Utilities.Get_Json_Data()
     for panelButton in jsonContent.keys():
         if not isinstance(jsonContent[panelButton], dict) or panelButton.lower()=="alias":
             continue
-        Create_Custom_Operator(panelButton)
+        create_operator(panelButton)
         
-def Create_Custom_Operator(className):
+def create_operator(class_name):
     alreadyExists = False
-    for subclass in Get_Custom_Operators():
-        if subclass.bl_label != className:
+    for subclass in get_custom_operators():
+        if subclass.bl_label != class_name:
             continue
         newClass = subclass
         alreadyExists = True
-    newClass = newClass if alreadyExists else type(className, (OP_generic_constrain_operator,), {})
-    newClass.bl_label = className
-    newClass.bl_idname = f'object.{className.replace(" ","")}'.lower()
+    newClass = newClass if alreadyExists else type(class_name, (OP_generic_constrain_operator,), {})
+    newClass.bl_label = class_name
+    newClass.bl_idname = f'object.{class_name.replace(" ","")}'.lower()
     bpy.utils.register_class(newClass)
     return newClass
