@@ -8,7 +8,8 @@ class OP_generic_constrain_operator(bpy.types.Operator):
     bl_description = "generic constrain operator"
 
     def execute(self, context):
-        jsonContent = Utilities.Get_Json_Data()
+        obj = Utilities.Get_Selected_Object()
+        jsonContent = Utilities.Get_Json_Data(obj)
         presetName = self.bl_label
         presetContent = Get_Preset_From_Json(presetName, jsonContent)
         aliasDict = jsonContent["Alias"] if "Alias" in jsonContent.keys() else []

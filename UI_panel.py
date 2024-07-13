@@ -30,27 +30,52 @@ class OBJECT_PT_JsonConstrainPanel(bpy.types.Panel):
         add_to_layout(layout, OP_SaveToCharacter, True, refreshButton)
         return
     
-
-class OP_Refresh(bpy.types.Operator):
-    bl_idname = "object.refresh"
-    bl_label = "Refresh"
-    bl_description = "Refreshes the panel from the json file"
-
-    def execute(self, context):
-        bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
-        OP_Refresh.unregister_operators()
-        bpy.utils.register_class(OBJECT_PT_JsonConstrainPanel)
-        initialize_classes()
-        return {'FINISHED'}
-    
     @staticmethod
-    def unregister_operators():
+    def Delete_Custom_Operators():
         for subclass in get_custom_operators():
             try:
                 bpy.utils.unregister_class(subclass)
                 print(f"Unregistered class: {subclass.__name__}")
             except RuntimeError as e:
                 print(f"Could not unregister class {subclass.__name__}: {e}")
+    
+
+class OP_Refresh(bpy.types.Operator):
+    bl_idname = "object.refresh"
+    bl_label = "Refresh"
+    bl_description = "Refreshes the panel from the json file"
+    
+    def __init__(self):
+        self.currentObject = None
+
+    def execute(self, context):
+        isValid = Utilities.Is_Valid_Armature_With_Json()
+        if not isValid:
+            raise Exception(isValid)
+        Refresh_Handler.Refresh_Panel(Utilities.Get_Selected_Object())
+        return {'FINISHED'}
+    
+    
+class Refresh_Handler:
+    def __init__(self):
+        self.currentObject = None
+    
+    def Refresh_On_Click(self,scene, depsgraph): #scene and depsgraph match Blender handler's calling signature
+        if not Utilities.Is_Valid_Armature_With_Json():
+            return {'FINISHED'}
+        obj = Utilities.Get_Selected_Object()
+        if self.currentObject and obj == self.currentObject:
+            return {"FINISHED"}
+        Refresh_Handler.Refresh_Panel(obj)
+        return {"FINISHED"}
+    
+    @staticmethod
+    def Refresh_Panel(obj):
+        bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
+        OBJECT_PT_JsonConstrainPanel.Delete_Custom_Operators()
+        bpy.utils.register_class(OBJECT_PT_JsonConstrainPanel)
+        Create_Operators_From_Json(obj)
+                
 
 class OP_SaveToCharacter(bpy.types.Operator):
     bl_idname = "object.savetocharacter"
@@ -58,21 +83,25 @@ class OP_SaveToCharacter(bpy.types.Operator):
     bl_description = "Saves the preset to a custom property"
     
     def execute(self, context):
+        if not Utilities.Is_Selected_Object_Valid_Armature():
+            raise Exception("No armature selected")
         obj = Utilities.Get_Selected_Object()
-        obj["Json rigging"] = json.dumps(Utilities.Get_Json_Data(), indent=2)
-        obj.property_overridable_library_set(f'["Json rigging"]', True)
+        if not Utilities.Get_Armature_Json_File(obj):
+            raise Exception(f"{Utilities.Get_Selected_ArmatureData_Name()}.json does not exist or is invalid")
+        obj["Json rig"] = json.dumps(Utilities.Get_Json_Data(obj), indent=2)
+        obj.property_overridable_library_set(f'["Json rig"]', True)
         return {'FINISHED'}
 
 #----------------------------- UI Panel
 
-def initialize_classes():
-    jsonContent = Utilities.Get_Json_Data()
+def Create_Operators_From_Json(obj):
+    jsonContent = Utilities.Get_Json_Data(obj)
     for panelButton in jsonContent.keys():
         if not isinstance(jsonContent[panelButton], dict) or panelButton.lower()=="alias":
             continue
-        create_operator(panelButton)
+        Create_Custom_Operator(panelButton)
         
-def create_operator(class_name):
+def Create_Custom_Operator(class_name):
     alreadyExists = False
     for subclass in get_custom_operators():
         if subclass.bl_label != class_name:
@@ -84,3 +113,4 @@ def create_operator(class_name):
     newClass.bl_idname = f'object.{class_name.replace(" ","")}'.lower()
     bpy.utils.register_class(newClass)
     return newClass
+
