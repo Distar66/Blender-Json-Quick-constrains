@@ -2,10 +2,10 @@ import bpy
 from .generic_constrain import OP_generic_constrain_operator
 from .utilities import Utilities
 import json
+from bpy.app.handlers import persistent
 
 
 get_custom_operators = lambda : list(OP_generic_constrain_operator.__subclasses__())
-
 
 #----------------------------- UI Panel
 
@@ -20,7 +20,7 @@ class OBJECT_PT_JsonConstrainPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_switch_ik_fk"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'Rigging'
+    bl_category = 'Animation'
     
     def draw(self, context):
         layout = self.layout
@@ -50,7 +50,7 @@ class OP_Refresh(bpy.types.Operator):
 
     def execute(self, context):
         isValid = Utilities.Is_Valid_Armature_With_Json()
-        if not isValid:
+        if isinstance(isValid, ValueError):
             raise Exception(isValid)
         Refresh_Handler.Refresh_Panel(Utilities.Get_Selected_Object())
         return {'FINISHED'}
@@ -60,8 +60,9 @@ class Refresh_Handler:
     def __init__(self):
         self.currentObject = None
     
+    @persistent
     def Refresh_On_Click(self,scene, depsgraph): #scene and depsgraph match Blender handler's calling signature
-        if not Utilities.Is_Valid_Armature_With_Json():
+        if isinstance(Utilities.Is_Valid_Armature_With_Json(), ValueError):
             return {'FINISHED'}
         obj = Utilities.Get_Selected_Object()
         if self.currentObject and obj == self.currentObject:

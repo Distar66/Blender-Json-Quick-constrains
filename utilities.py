@@ -3,11 +3,11 @@ from pathlib import Path
 import json
 
 
-def Is_Valid_Json(jsonString):
+def Is_Valid_Json(str):
     try:
-        json.loads(jsonString)
+        json.loads(str)
         return True
-    except ValueError:
+    except Exception as e:
         return False
 
 class Utilities:
@@ -54,7 +54,7 @@ class Utilities:
     @staticmethod
     def Is_Valid_Armature_With_Json():
         if not Utilities.Is_Selected_Object_Valid_Armature():
-                return ValueError("The selected object is not a valid armature")
+            return ValueError("The selected object is not a valid armature")
         obj = Utilities.Get_Selected_Object()
         if not Utilities.Get_Json_Data(obj):
             return ValueError("The object has no valid Json file or valid Json custom property")
@@ -66,7 +66,7 @@ class Utilities:
             return False
         if not Is_Valid_Json(obj["Json rig"]):
             return False
-        return obj["Json rig"]
+        return json.loads(obj["Json rig"])
 
     @staticmethod
     def Get_Armature_Json_File(obj):
@@ -75,10 +75,10 @@ class Utilities:
         if not filePath.exists():
             return False
         with open(filePath) as jsonDataFile:
-            jsonContent = jsonDataFile.read()
-            if not Is_Valid_Json(jsonContent):
+            jsonString = jsonDataFile.read()
+            if not Is_Valid_Json(jsonString):
                 return False
-            return json.loads(jsonContent)
+            return json.loads(jsonString)
         
     @staticmethod
     def Get_Json_Filepath(obj):
@@ -90,5 +90,5 @@ class Utilities:
     @staticmethod
     def Get_Selected_ArmatureData_Name():
         if not Utilities.Is_Selected_Object_Valid_Armature():
-            raise Exception("No armature selected")
+            return Exception("No armature selected")
         return bpy.data.armatures[Utilities.Get_Selected_Object().data.name].name
