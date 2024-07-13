@@ -1,6 +1,7 @@
 import bpy
 from .generic_constrain import OP_generic_constrain_operator
 from .utilities import Utilities
+import json
 
 
 get_custom_operators = lambda : list(OP_generic_constrain_operator.__subclasses__())
@@ -25,14 +26,15 @@ class OBJECT_PT_JsonConstrainPanel(bpy.types.Panel):
         layout = self.layout
         for subclass in get_custom_operators():
             add_to_layout(layout, subclass, True, layout)
-        add_to_layout(layout, OP_Refresh, True, layout)
+        refreshButton = add_to_layout(layout, OP_Refresh, True, layout)
+        add_to_layout(layout, OP_SaveToCharacter, True, refreshButton)
         return
     
 
 class OP_Refresh(bpy.types.Operator):
     bl_idname = "object.refresh"
-    bl_label = "Refresh panel"
-    bl_description = "Refresh panel"
+    bl_label = "Refresh"
+    bl_description = "Refreshes the panel from the json file"
 
     def execute(self, context):
         bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
@@ -50,6 +52,16 @@ class OP_Refresh(bpy.types.Operator):
             except RuntimeError as e:
                 print(f"Could not unregister class {subclass.__name__}: {e}")
 
+class OP_SaveToCharacter(bpy.types.Operator):
+    bl_idname = "object.savetocharacter"
+    bl_label = "Save to character"
+    bl_description = "Saves the preset to a custom property"
+    
+    def execute(self, context):
+        obj = Utilities.Get_Selected_Object()
+        obj["Json rigging"] = json.dumps(Utilities.Get_Json_Data(), indent=2)
+        obj.property_overridable_library_set(f'["Json rigging"]', True)
+        return {'FINISHED'}
 
 #----------------------------- UI Panel
 
