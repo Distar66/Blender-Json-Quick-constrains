@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Json quick constrains",
     "author": "Distar",
-    "version": (1, 4, 0),
+    "version": (1, 3, 1),
     "blender": (2, 80, 0),
     "description": "Creates animation constrain panels based on Json presets",
     "warning": "",
