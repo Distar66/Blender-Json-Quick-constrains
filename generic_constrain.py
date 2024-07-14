@@ -1,73 +1,80 @@
 import bpy
 import math
 from .utilities import Utilities
+from .utilities import Bpy_Utilities
 
-class OP_generic_constrain_operator(bpy.types.Operator):
-    bl_idname = "object.constrain_operator"
-    bl_label = "Generic constrain"
-    bl_description = "generic constrain operator"
+class OP_generic_constraint_operator(bpy.types.Operator):
+    bl_idname = "object.constraint_operator"
+    bl_label = "Generic constraint"
+    bl_description = "generic constraint operator"
 
     def execute(self, context):
-        obj = Utilities.Get_Selected_Object()
-        jsonContent = Utilities.Get_Json_Data(obj)
+        obj = Bpy_Utilities.Get_Selected_Object()
+        jsonContent = Bpy_Utilities.Get_Json_Data(obj)
         presetName = self.bl_label
-        presetContent = Get_Preset_From_Json(presetName, jsonContent)
-        aliasDict = jsonContent["Alias"] if "Alias" in jsonContent.keys() else []
-        Remove_Constrains_From_Preset(presetContent, aliasDict)
-        Add_Constrains_From_Preset(presetContent, aliasDict)
+        preset = Get_Preset_From_Json(presetName, jsonContent)
+        presetKeys = jsonContent.keys()
+        aliasKey = Utilities.Match_Case_Insensitive("alias", jsonContent.keys())
+        aliasDict = jsonContent[aliasKey] if aliasKey else {}
+        Remove_Constraints_From_Preset(preset, aliasDict)
+        Add_Constraints_From_Preset(obj,preset, aliasDict)
         return {'FINISHED'}
     
-
+    
 def Get_Preset_From_Json(presetName,jsonContent):
     if presetName not in jsonContent.keys():
         raise Exception(f"The preset {presetName} does not exist")
-    presetContent = jsonContent[presetName]
-    if not isinstance(presetContent, dict):
+    preset = jsonContent[presetName]
+    if not isinstance(preset, dict):
         raise Exception(f"The preset {presetName} is not valid")
-    return presetContent
+    return preset
 
-def Add_Constrains_From_Preset(presetContent, aliasDict):
-    if "Add_Constrain" not in presetContent.keys():
+def Add_Constraints_From_Preset(obj,preset, aliasDict):
+    constraintKey = Utilities.Match_Case_Insensitive("constraints", preset.keys())
+    if not constraintKey:
         return
-    for constrain in presetContent["Add_Constrain"]:
-        aliasedConstrains = Utilities.Match_Aliases(constrain, aliasDict)
-        Add_Constrain(aliasedConstrains)
+    for constraint in preset[constraintKey]:
+        aliasedConstraints = Utilities.Match_Aliases(constraint, aliasDict)
+        Add_Constraint(obj,aliasedConstraints)
 
 
-def Add_Constrain(constrainAttributes):
-    constrainedBone = constrainAttributes["bone"]
-    constrainType = constrainAttributes["constrain"]
-    newConstrain = Utilities.Get_Selected_Object().pose.bones[constrainedBone].constraints.new(type=constrainType)
-    constrainTarget = Utilities.Get_Selected_Object()
-    if "target" in constrainAttributes.keys() and constrainAttributes["target"] != Utilities.Get_Selected_Object().name:
-        constrainTarget = [ob for ob in bpy.context.view_layer.objects if constrainAttributes["target"] in ob.name][0]
-    Add_Attribute(newConstrain, "target", constrainTarget)
-    for attribute,value in constrainAttributes.items():
-        if attribute in ["constrain", "bone", "target"]:
+def Add_Constraint(obj,constraintAttr):
+    constrainedBone = constraintAttr["bone"]
+    constrainType = constraintAttr["constraint"]
+    newConstrain = obj.pose.bones[constrainedBone].constraints.new(type=constrainType)
+    constraintTarget = obj
+    if "target" in constraintAttr.keys() and constraintAttr["target"] != obj.name:
+        constraintTarget = Bpy_Utilities.Get_Object_From_Name(constraintAttr["target"])
+    Add_Attribute(obj,newConstrain, "target", constraintTarget)
+    for attribute,value in constraintAttr.items():
+        if attribute in ["constraint", "bone", "target"]:
             continue
-        Add_Attribute(newConstrain, attribute, value)
+        Add_Attribute(obj,newConstrain, attribute, value)
         
-def Add_Attribute(constrain, attribute, value):
-    if value == "self":
-        value = Utilities.Get_Selected_Object()
-    get_subtype = lambda : type(constrain).bl_rna.properties[attribute].subtype
+def Add_Attribute(obj,constraint, attribute, value):
+    if isinstance(value,str) and value.lower() == "self":
+        value = obj
+    get_subtype = lambda : type(constraint).bl_rna.properties[attribute].subtype
     if isinstance(value, float) and get_subtype() == "ANGLE":
         value = math.radians(value)
-    if hasattr(constrain, attribute):
-        setattr(constrain, attribute, value)
+    if hasattr(constraint, attribute):
+        setattr(constraint, attribute, value)
         
 
-def Remove_Constrains_From_Preset(presetContent, aliasDict):
-    if "Remove Constrains" in presetContent.keys():
-        bonesToClear = Utilities.Match_Aliases(presetContent["Remove Constrains"], aliasDict)
-        Remove_All_Constrains(bonesToClear)
+def Remove_Constraints_From_Preset(preset, aliasDict):
+    removeKey = Utilities.Match_Case_Insensitive("remove", [key for key in preset.keys()])
+    if not removeKey:
+        return 
+    bonesToClear = Utilities.Match_Aliases(preset[removeKey], aliasDict)
+    Remove_All_Constraints(bonesToClear)
 
-def Remove_All_Constrains(bonesToClear):
+def Remove_All_Constraints(bonesToClear):
     for boneName in bonesToClear:
-        Clear_Bone_Constrains(boneName)
+        Clear_Bone_Constraints(boneName)
 
-def Clear_Bone_Constrains(boneName):
-    characterRig = Utilities.Get_Selected_Object().pose
-    for constrain in characterRig.bones[boneName].constraints:
-        characterRig.bones[boneName].constraints.remove(constrain)
-            
+def Clear_Bone_Constraints(boneName):
+    characterRig = Bpy_Utilities.Get_Selected_Object().pose
+    for constraint in characterRig.bones[boneName].constraints:
+        characterRig.bones[boneName].constraints.remove(constraint)
+        
+        

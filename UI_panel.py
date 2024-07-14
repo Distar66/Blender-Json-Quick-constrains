@@ -1,11 +1,11 @@
 import bpy
-from .generic_constrain import OP_generic_constrain_operator
-from .utilities import Utilities
+from .generic_constrain import OP_generic_constraint_operator
+from .utilities import Bpy_Utilities
 import json
 from bpy.app.handlers import persistent
 
 
-get_custom_operators = lambda : list(OP_generic_constrain_operator.__subclasses__())
+get_custom_operators = lambda : list(OP_generic_constraint_operator.__subclasses__())
 
 #----------------------------- UI Panel
 
@@ -39,6 +39,12 @@ class OBJECT_PT_JsonConstrainPanel(bpy.types.Panel):
             except RuntimeError as e:
                 print(f"Could not unregister class {subclass.__name__}: {e}")
     
+    
+def Reset_Panel():
+    OBJECT_PT_JsonConstrainPanel.Delete_Custom_Operators()
+    bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
+    bpy.utils.register_class(OBJECT_PT_JsonConstrainPanel)
+    
 
 class OP_Refresh(bpy.types.Operator):
     bl_idname = "object.refresh"
@@ -49,10 +55,12 @@ class OP_Refresh(bpy.types.Operator):
         self.currentObject = None
 
     def execute(self, context):
-        isValid = Utilities.Is_Valid_Armature_With_Json()
+        isValid = Bpy_Utilities.Selected_Armature_Has_Json()
         if isinstance(isValid, ValueError):
+            Reset_Panel()
             raise Exception(isValid)
-        Refresh_Handler.Refresh_Panel(Utilities.Get_Selected_Object())
+        Reset_Panel()
+        Create_Operators_From_Json(Bpy_Utilities.Get_Selected_Object())
         return {'FINISHED'}
     
     
@@ -62,20 +70,17 @@ class Refresh_Handler:
     
     @persistent
     def Refresh_On_Click(self,scene, depsgraph): #scene and depsgraph match Blender handler's calling signature
-        if isinstance(Utilities.Is_Valid_Armature_With_Json(), ValueError):
-            return {'FINISHED'}
-        obj = Utilities.Get_Selected_Object()
+        if not Bpy_Utilities.Get_Selected_Object():
+            Reset_Panel()
+            return {"FINISHED"}
+        obj = Bpy_Utilities.Get_Selected_Object()
         if self.currentObject and obj == self.currentObject:
             return {"FINISHED"}
-        Refresh_Handler.Refresh_Panel(obj)
-        return {"FINISHED"}
-    
-    @staticmethod
-    def Refresh_Panel(obj):
-        bpy.utils.unregister_class(OBJECT_PT_JsonConstrainPanel)
-        OBJECT_PT_JsonConstrainPanel.Delete_Custom_Operators()
-        bpy.utils.register_class(OBJECT_PT_JsonConstrainPanel)
+        Reset_Panel()
+        if isinstance(Bpy_Utilities.Selected_Armature_Has_Json(), ValueError):
+            return {'FINISHED'}
         Create_Operators_From_Json(obj)
+        return {"FINISHED"}
                 
 
 class OP_SaveToCharacter(bpy.types.Operator):
@@ -84,19 +89,19 @@ class OP_SaveToCharacter(bpy.types.Operator):
     bl_description = "Saves the preset to a custom property"
     
     def execute(self, context):
-        if not Utilities.Is_Selected_Object_Valid_Armature():
+        if not Bpy_Utilities.Is_Selected_Valid_Armature():
             raise Exception("No armature selected")
-        obj = Utilities.Get_Selected_Object()
-        if not Utilities.Get_Armature_Json_File(obj):
-            raise Exception(f"{Utilities.Get_Selected_ArmatureData_Name()}.json does not exist or is invalid")
-        obj["Json rig"] = json.dumps(Utilities.Get_Json_Data(obj), indent=2)
+        obj = Bpy_Utilities.Get_Selected_Object()
+        if not Bpy_Utilities.Get_Armature_Json_File(obj):
+            raise Exception(f"{Bpy_Utilities.Get_Selected_ArmatureData_Name()}.json does not exist or is invalid")
+        obj["Json rig"] = json.dumps(Bpy_Utilities.Get_Json_Data(obj), indent=2)
         obj.property_overridable_library_set(f'["Json rig"]', True)
         return {'FINISHED'}
 
 #----------------------------- UI Panel
 
 def Create_Operators_From_Json(obj):
-    jsonContent = Utilities.Get_Json_Data(obj)
+    jsonContent = Bpy_Utilities.Get_Json_Data(obj)
     for panelButton in jsonContent.keys():
         if not isinstance(jsonContent[panelButton], dict) or panelButton.lower()=="alias":
             continue
@@ -109,7 +114,7 @@ def Create_Custom_Operator(class_name):
             continue
         newClass = subclass
         alreadyExists = True
-    newClass = newClass if alreadyExists else type(class_name, (OP_generic_constrain_operator,), {})
+    newClass = newClass if alreadyExists else type(class_name, (OP_generic_constraint_operator,), {})
     newClass.bl_label = class_name
     newClass.bl_idname = f'object.{class_name.replace(" ","")}'.lower()
     bpy.utils.register_class(newClass)
