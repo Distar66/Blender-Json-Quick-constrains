@@ -9,7 +9,16 @@ def Is_Valid_Json(str):
         return True
     except Exception as e:
         return False
+    
+def Find_In_List(string, list, modifier = lambda x : x, listModifier = lambda y : y, condition = lambda x,y : x==y):
+    for item in list:
+        if not condition(modifier(string),listModifier(item)):
+            continue
+        return item
+    return False
 
+def Find_In_Object_List(string, list, modifier = lambda x : x, listModifier = lambda y : y, condition = lambda x,y : x==y):
+    return Find_In_List(string, list, modifier, lambda y : listModifier(y.name),condition)
 
 class Bpy_Utilities:
     @staticmethod
@@ -17,8 +26,21 @@ class Bpy_Utilities:
         return bpy.context.object
     
     @staticmethod
-    def Get_Object_From_Name(searchedName):
-        return [obj for obj in bpy.context.view_layer.objects if searchedName.lower in obj.name.lower()][0]
+    def Get_Object_From_Name(name):
+        objList = [obj for obj in bpy.context.view_layer.objects]
+        match = Find_In_Object_List(name, objList)
+        if match:
+            return match
+        matchCaseInsensitive = Find_In_Object_List(name, objList, modifier = lambda x : x.lower(), listModifier = lambda y : y.lower())
+        if matchCaseInsensitive:
+            return matchCaseInsensitive
+        inSubstring = Find_In_Object_List(name, objList, condition = lambda x,y : x in y)
+        if inSubstring:
+            return inSubstring
+        inSubstringCaseInsensitive = Find_In_Object_List(name, objList, modifier = lambda x : x.lower(), listModifier = lambda y : y.lower(), condition = lambda x,y : x in y)
+        if inSubstringCaseInsensitive:
+            return inSubstringCaseInsensitive
+        return False
     
     @staticmethod
     def Is_Armature(obj):

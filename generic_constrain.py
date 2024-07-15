@@ -41,20 +41,23 @@ def Add_Constraints_From_Preset(obj,preset, aliasDict):
 def Add_Constraint(obj,constraintAttr):
     constrainedBone = constraintAttr["bone"]
     constrainType = constraintAttr["constraint"]
-    newConstrain = obj.pose.bones[constrainedBone].constraints.new(type=constrainType)
-    constraintTarget = obj
-    if "target" in constraintAttr.keys() and constraintAttr["target"] != obj.name:
-        constraintTarget = Bpy_Utilities.Get_Object_From_Name(constraintAttr["target"])
-    Add_Attribute(obj,newConstrain, "target", constraintTarget)
+    newConstraint = obj.pose.bones[constrainedBone].constraints.new(type=constrainType)
     for attribute,value in constraintAttr.items():
-        if attribute in ["constraint", "bone", "target"]:
+        if attribute in ["constraint", "bone"]:
             continue
-        Add_Attribute(obj,newConstrain, attribute, value)
+        Add_Attribute(obj,newConstraint, attribute, value)
+    if "target" in type(newConstraint).bl_rna.properties.keys() and newConstraint.target == None:
+        Add_Attribute(obj,newConstraint, "target", "self")
+    
         
 def Add_Attribute(obj,constraint, attribute, value):
-    if isinstance(value,str) and value.lower() == "self":
-        value = obj
+    is_pointer = lambda : True if type(constraint).bl_rna.properties[attribute].type == "POINTER" else False
     get_subtype = lambda : type(constraint).bl_rna.properties[attribute].subtype
+    if is_pointer():
+        if value.lower() == "self":
+            value = obj
+        else :
+            value = Bpy_Utilities.Get_Object_From_Name(value)
     if isinstance(value, float) and get_subtype() == "ANGLE":
         value = math.radians(value)
     if hasattr(constraint, attribute):
