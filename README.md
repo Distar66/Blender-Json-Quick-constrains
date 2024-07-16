@@ -1,6 +1,9 @@
 # [Automated quick panel](https://www.distaranimation.com/projects/json-quick-constraints)
 Constrain a bone or a set of bones in one click from the automatically generated quick buttons
 
+![Json quick constraints Panneau](https://images.squarespace-cdn.com/content/v1/61bc8061540ca43eacf67e15/2a178377-1850-43e7-b1ad-1a2b0189bb23/Json+quick+constraints+Panneau.jpg?format=2500w)
+
+
 ## Extremely powerful
 The addon reads user created constraints in a Json file and adds quick constraint buttons in the animation panel. In one click you can constrain a bone or a set of bones
 
